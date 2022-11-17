@@ -14,7 +14,7 @@ local tag = "[FindPlayers]: "
 
 local dlstatus = require('moonloader').download_status
 
-local script_vers = 3
+local script_vers = 4
 local script_vers_text = "1.3"
 local script_path = thisScript().path
 local script_url = "https://raw.githubusercontent.com/SoMiK3/FindPlayersUniv/main/FindPlayers.lua"
@@ -113,24 +113,6 @@ local fa_glyph_ranges = imgui.ImGlyphRanges({ fa.min_range, fa.max_range })
 
 nicksandnumbers = {
 }
-numbersid = {
-	[1] = "1",
-	[2] = "1",
-	[3] = "1",
-	[4] = "1",
-	[5] = "1",
-	[6] = "1",
-	[7] = "1",
-	[8] = "1",
-	[9] = "1",
-	[0] = "1",
-	["callButton"] = "1",
-	["call"] = "1",
-	["panel"] = "1",
-	["outcoming"] = "1",
-	["biz"] = "1",
-	["Delete"] = "1"
-}
 servers = {
 	["Phoenix"] = "185.169.134.3:7777",
 	["Tucson"] = "185.169.134.4:7777",
@@ -164,7 +146,7 @@ function main()
 	while not isSampAvailable() do wait(100) end
 
 	sampRegisterChatCommand(cmd, activation)
-	sampAddChatMessage(ShowHotkey(FindPlayer.cfg.bindKey), -1)
+
 	sampAddChatMessage(tag .. color_text .. "Скрипт готов к работе. Автор - " .. "{FFFFFF}" ..  "СоМиК" .. color_text .. "! Меню скрипта: " .. "{FFFFFF}/" .. cmd, main_color)
 	
 	bindKey = rkeys.registerHotKey(activeKeys.v, 1, true, function() if not loadScr then window.v = not window.v imgui.Process = not imgui.Process else sampAddChatMessage(tag .. color_text .. "Вы сможете открыть окно {FFFFFF}только после входа {FFFF00}на сервер!", main_color) end end)
@@ -514,6 +496,36 @@ function sampev.onServerMessage(color, msg)
 	end
 	if waitCalling then
 		if msg:match("^%[Информация%] {FFFFFF}Собеседник взял трубку$") then
+			local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "r")
+			local a = file:read("*a")
+			file:close()
+			local json = decodeJson(a)
+			if #json["hnicks"] == 0 then
+				table.insert(json["hnicks"], nick_x)
+				table.insert(json["hlvl"], lvl_x)
+				table.insert(json["hnumber"], number_x)
+				table.insert(json["hinfo"], "{009900}вызов совершён")
+			else
+				for i = #json["hnicks"] + 1, 1, -1 do
+					if i ~= 1 and i ~= 21 then
+						json["hnicks"][i] = json["hnicks"][i - 1]
+						json["hlvl"][i] = json["hlvl"][i - 1]
+						json["hnumber"][i] = json["hnumber"][i - 1]
+						json["hinfo"][i] = json["hinfo"][i - 1]
+					else
+						if i == 1 then
+							json["hnicks"][i] = nick_x
+							json["hlvl"][i] = lvl_x
+							json["hnumber"][i] = number_x
+							json["hinfo"][i] = "{009900}вызов совершён"
+						end
+					end
+				end
+			end
+			local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
+			file:write(encodeJson(json))
+			file:flush()
+			file:close()
 			calling = true
 			if calling then
 				if chkmsg.v then
@@ -560,7 +572,7 @@ function sampev.onServerMessage(color, msg)
 			lua_thread.create(function ()
 				while true do
 					wait(0)
-					sampSendChat("/phone")
+					sampSendClickTextdraw(65535)
 					wait(100)
 					sampAddChatMessage(tag .. color_text .. "{FFFF00}Звонок был {FFFFFF}завершен{FFFF00}. Время разговора: {FFFFFF}" .. msg:match("%[Информация%] {......}Звонок окончен! Время разговора {......}(%d+) секунд%.") .. " {FFFF00}секунд", main_color)
 					break
@@ -571,16 +583,81 @@ function sampev.onServerMessage(color, msg)
 		if msg:match("^%[Информация%] {FFFFFF}Собеседник отменил звонок$") then
 			calling = false
 			waitCalling = false
+			local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "r")
+			local a = file:read("*a")
+			file:close()
+			local json = decodeJson(a)
+			if #json["hnicks"] == 0 then
+				table.insert(json["hnicks"], nick_x)
+				table.insert(json["hlvl"], lvl_x)
+				table.insert(json["hnumber"], number_x)
+				table.insert(json["hinfo"], "{660000}вызов отклонен (абонентом)")
+			else
+				for i = #json["hnicks"] + 1, 1, -1 do
+					if i ~= 1 and i ~= 21 then
+						json["hnicks"][i] = json["hnicks"][i - 1]
+						json["hlvl"][i] = json["hlvl"][i - 1]
+						json["hnumber"][i] = json["hnumber"][i - 1]
+						json["hinfo"][i] = json["hinfo"][i - 1]
+					else
+						if i == 1 then
+							json["hnicks"][i] = nick_x
+							json["hlvl"][i] = lvl_x
+							json["hnumber"][i] = number_x
+							json["hinfo"][i] = "{660000}вызов отклонен (абонентом)"
+						end
+					end
+				end
+			end
+			local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
+			file:write(encodeJson(json))
+			file:flush()
+			file:close()
 			lua_thread.create(function ()
 				while true do
 					wait(0)
-					sampSendChat("/phone")
+					sampSendClickTextdraw(65535)
 					wait(100)
 					sampAddChatMessage(tag .. color_text .. "{FFFFFF}Абонент {FFFF00}отклонил ваш звонок.", main_color)
 					break
 				end
 			end)
 			return false
+		end
+		if msg:match("^%[Информация%] {......}Вы отменили звонок$") then
+			phoneProcess = false
+			waitCalling = false
+			calling = false
+			local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "r")
+			local a = file:read("*a")
+			file:close()
+			local json = decodeJson(a)
+			if #json["hnicks"] == 0 then
+				table.insert(json["hnicks"], nick_x)
+				table.insert(json["hlvl"], lvl_x)
+				table.insert(json["hnumber"], number_x)
+				table.insert(json["hinfo"], "{660000}вызов отклонен (вами)")
+			else
+				for i = #json["hnicks"] + 1, 1, -1 do
+					if i ~= 1 and i ~= 21 then
+						json["hnicks"][i] = json["hnicks"][i - 1]
+						json["hlvl"][i] = json["hlvl"][i - 1]
+						json["hnumber"][i] = json["hnumber"][i - 1]
+						json["hinfo"][i] = json["hinfo"][i - 1]
+					else
+						if i == 1 then
+							json["hnicks"][i] = nick_x
+							json["hlvl"][i] = lvl_x
+							json["hnumber"][i] = number_x
+							json["hinfo"][i] = "{660000}вызов отклонен (вами)"
+						end
+					end
+				end
+			end
+			local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
+			file:write(encodeJson(json))
+			file:flush()
+			file:close()
 		end
 	end
 	if phoneProcess or waitCalling or calling then
@@ -590,11 +667,15 @@ function sampev.onServerMessage(color, msg)
 		end
 		if msg:match("^У вас нет sim карты!$") then
 			phoneProcess = false
+			waitCalling = false
 			sampAddChatMessage(tag .. color_text .. "У вас не установлена {FFFFFF}сим-карта {FFFF00}в телефон!", main_color)
 			return false
 		end
 		if msg:match("^%[Информация%] {......}Вы отменили звонок$") then
 			phoneProcess = false
+			waitCalling = false
+			calling = false
+			sampSendClickTextdraw(65535)
 		end
 		if msg:match("^%[Подсказка%] {......}Номера телефонов государственных служб:$") then
 			return false
@@ -630,10 +711,40 @@ function sampev.onShowDialog(id, style, title, b1, b2, text)
 	print(text)
 	if phoneProcess or waitCalling or calling then
 		if text == "{B03131}Ваш абонент вне зоны действия сети!\n{FFFFFF}Вы можете оставить ему сообщение, как только он появится в сети он его сможет прочитать." then
-			sampAddChatMessage(tag .. color_text .. "У абонента {FFFFFF}включен {FFFF00}режим полета!", main_color)
+			sampAddChatMessage(tag .. color_text .. "У абонента {FFFFFF}выключен {FFFF00}телефон (режим полёта)!", main_color)
 			phoneProcess = false
 			waitCalling = false
 			calling = false
+			local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "r")
+			local a = file:read("*a")
+			file:close()
+			local json = decodeJson(a)
+			if #json["hnicks"] == 0 then
+				table.insert(json["hnicks"], nick_x)
+				table.insert(json["hlvl"], lvl_x)
+				table.insert(json["hnumber"], number_x)
+				table.insert(json["hinfo"], "{660000}вызов отклонен (выключен телефон)")
+			else
+				for i = #json["hnicks"] + 1, 1, -1 do
+					if i ~= 1 and i ~= 21 then
+						json["hnicks"][i] = json["hnicks"][i - 1]
+						json["hlvl"][i] = json["hlvl"][i - 1]
+						json["hnumber"][i] = json["hnumber"][i - 1]
+						json["hinfo"][i] = json["hinfo"][i - 1]
+					else
+						if i == 1 then
+							json["hnicks"][i] = nick_x
+							json["hlvl"][i] = lvl_x
+							json["hnumber"][i] = number_x
+							json["hinfo"][i] = "{660000}вызов отклонен (выключен телефон)"
+						end
+					end
+				end
+			end
+			local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
+			file:write(encodeJson(json))
+			file:flush()
+			file:close()
 			return false
 		end
 	end
@@ -1416,7 +1527,7 @@ function imgui.OnDrawFrame()
 													local item = 1
 													for _, nick in ipairs(insideTabl["nicks"]) do
 														if nick == nicksandnumbers[i][1] then
-															if imgui.Button(fa.ICON_FA_MINUS_SQUARE .. u8" из игнорирования ##" .. i, imgui.ImVec2(150, 23)) then
+															if imgui.Button(fa.ICON_FA_MINUS_SQUARE .. u8" не игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 																local itemForDelete = 1
 																for _, value in ipairs(insideTabl["nicks"]) do
 																	if value == nicksandnumbers[i][1] then
@@ -1435,7 +1546,7 @@ function imgui.OnDrawFrame()
 															item = item + 1
 															if item > #insideTabl["nicks"] then
 																local pizda = 1
-																if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" в игнорирование ##" .. i, imgui.ImVec2(150, 23)) then
+																if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 																	table.insert(insideTabl["nicks"], u8:decode(nicksandnumbers[i][1]))
 																	encodedTable = encodeJson(insideTabl)
 																	local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
@@ -1447,7 +1558,7 @@ function imgui.OnDrawFrame()
 														end
 													end
 												else
-													if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" в игнорирование ##" .. i, imgui.ImVec2(150, 23)) then
+													if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 														table.insert(insideTabl["nicks"], u8:decode(nicksandnumbers[i][1]))
 														encodedTable = encodeJson(insideTabl)
 														local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
@@ -1456,54 +1567,7 @@ function imgui.OnDrawFrame()
 														file:close()
 													end
 												end
-												imgui.SameLine()
-												local r, g, b, a = imgui.ImColor(imgui.GetStyle().Colors[imgui.Col.Button]):GetFloat4()
-												imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(r, g, b, a/2) )
-												imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(r, g, b, a/2))
-												imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(r, g, b, a/2))
-												imgui.PushStyleColor(imgui.Col.Text, imgui.GetStyle().Colors[imgui.Col.TextDisabled])
-													imgui.Button(fa.ICON_FA_PHONE .. u8" позвонить##" .. i, imgui.ImVec2(100, 23))
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												if imgui.IsItemHovered() then
-													if theme == 1 then
-														imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(1.00, 1.00, 1.00, 1.00))
-													elseif theme == 2 then
-														imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(0.00, 0.00, 0.00, 1.00))
-													end
-													imgui.BeginTooltip()
-													imgui.PushTextWrapPos(230)
-													imgui.TextUnformatted(u8"У игрока отсутствует сим-карта.")
-													imgui.PopTextWrapPos()
-													imgui.EndTooltip()
-													imgui.PopStyleColor()
-												end
-												imgui.SameLine()
-												local r, g, b, a = imgui.ImColor(imgui.GetStyle().Colors[imgui.Col.Button]):GetFloat4()
-												imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(r, g, b, a/2) )
-												imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(r, g, b, a/2))
-												imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(r, g, b, a/2))
-												imgui.PushStyleColor(imgui.Col.Text, imgui.GetStyle().Colors[imgui.Col.TextDisabled])
-													imgui.Button(fa.ICON_FA_COPY .. u8"##" .. i, imgui.ImVec2(30, 23))
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												if imgui.IsItemHovered() then
-													if theme == 1 then
-														imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(1.00, 1.00, 1.00, 1.00))
-													elseif theme == 2 then
-														imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(0.00, 0.00, 0.00, 1.00))
-													end
-													imgui.BeginTooltip()
-													imgui.PushTextWrapPos(230)
-													imgui.TextUnformatted(u8"У игрока отсутствует сим-карта.")
-													imgui.PopTextWrapPos()
-													imgui.EndTooltip()
-													imgui.PopStyleColor()
-												end
+												
 											imgui.PopFont()
 											imgui.PushFont(fontsize20)
 										else
@@ -1519,7 +1583,7 @@ function imgui.OnDrawFrame()
 													local item = 1
 													for _, nick in ipairs(insideTabl["nicks"]) do
 														if nick == nicksandnumbers[i][1] then
-															if imgui.Button(fa.ICON_FA_MINUS_SQUARE .. u8" из игнорирования ##" .. i, imgui.ImVec2(150, 23)) then
+															if imgui.Button(fa.ICON_FA_MINUS_SQUARE .. u8" не игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 																local itemForDelete = 1
 																for _, value in ipairs(insideTabl["nicks"]) do
 																	if value == nicksandnumbers[i][1] then
@@ -1538,7 +1602,7 @@ function imgui.OnDrawFrame()
 															item = item + 1
 															if item > #insideTabl["nicks"] then
 																local pizda = 1
-																if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" в игнорирование ##" .. i, imgui.ImVec2(150, 23)) then
+																if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 																	table.insert(insideTabl["nicks"], u8:decode(nicksandnumbers[i][1]))
 																	encodedTable = encodeJson(insideTabl)
 																	local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
@@ -1550,7 +1614,7 @@ function imgui.OnDrawFrame()
 														end
 													end
 												else
-													if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" в игнорирование ##" .. i, imgui.ImVec2(150, 23)) then
+													if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 														table.insert(insideTabl["nicks"], u8:decode(nicksandnumbers[i][1]))
 														encodedTable = encodeJson(insideTabl)
 														local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
@@ -1567,12 +1631,11 @@ function imgui.OnDrawFrame()
 														if phoneProcess then
 															sampAddChatMessage(tag .. color_text .. "Процесс {FFFFFF}авто-звонка {FFFF00}уже выполняется, подождите немного!", main_color)
 														else
-															if sampTextdrawIsExists(tonumber(numbersid["panel"])) and not sampTextdrawGetString(tonumber(numbersid["biz"])):match("^BIZ$") then
-																sampAddChatMessage(tag .. color_text .. "Вы должны находиться в {FFFFFF}главном меню {FFFF00}телефона!", main_color)
-															else
-																waitCalling = true
-																sampSendChat("/call " .. nicksandnumbers[i][2])
-															end
+															nick_x = nicksandnumbers[i][1]
+															number_x = nicksandnumbers[i][2]
+															lvl_x = nicksandnumbers[i][4]
+															waitCalling = true
+															sampSendChat("/call " .. nicksandnumbers[i][2])
 														end
 													end
 												end
@@ -1598,7 +1661,7 @@ function imgui.OnDrawFrame()
 													local item = 1
 													for _, nick in ipairs(insideTabl["nicks"]) do
 														if nick == nicksandnumbers[i][1] then
-															if imgui.Button(fa.ICON_FA_MINUS_SQUARE .. u8" из игнорирования ##" .. i, imgui.ImVec2(150, 23)) then
+															if imgui.Button(fa.ICON_FA_MINUS_SQUARE .. u8" не игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 																local itemForDelete = 1
 																for _, value in ipairs(insideTabl["nicks"]) do
 																	if value == nicksandnumbers[i][1] then
@@ -1617,7 +1680,7 @@ function imgui.OnDrawFrame()
 															item = item + 1
 															if item > #insideTabl["nicks"] then
 																local pizda = 1
-																if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" в игнорирование ##" .. i, imgui.ImVec2(150, 23)) then
+																if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 																	table.insert(insideTabl["nicks"], u8:decode(nicksandnumbers[i][1]))
 																	encodedTable = encodeJson(insideTabl)
 																	local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
@@ -1629,7 +1692,7 @@ function imgui.OnDrawFrame()
 														end
 													end
 												else
-													if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" в игнорирование ##" .. i, imgui.ImVec2(150, 23)) then
+													if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 														table.insert(insideTabl["nicks"], u8:decode(nicksandnumbers[i][1]))
 														encodedTable = encodeJson(insideTabl)
 														local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
@@ -1638,54 +1701,7 @@ function imgui.OnDrawFrame()
 														file:close()
 													end
 												end
-												imgui.SameLine()
-												local r, g, b, a = imgui.ImColor(imgui.GetStyle().Colors[imgui.Col.Button]):GetFloat4()
-												imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(r, g, b, a/2) )
-												imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(r, g, b, a/2))
-												imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(r, g, b, a/2))
-												imgui.PushStyleColor(imgui.Col.Text, imgui.GetStyle().Colors[imgui.Col.TextDisabled])
-													imgui.Button(fa.ICON_FA_PHONE .. u8" позвонить##" .. i, imgui.ImVec2(100, 23))
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												if imgui.IsItemHovered() then
-													if theme == 1 then
-														imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(1.00, 1.00, 1.00, 1.00))
-													elseif theme == 2 then
-														imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(0.00, 0.00, 0.00, 1.00))
-													end
-													imgui.BeginTooltip()
-													imgui.PushTextWrapPos(230)
-													imgui.TextUnformatted(u8"У игрока отсутствует сим-карта.")
-													imgui.PopTextWrapPos()
-													imgui.EndTooltip()
-													imgui.PopStyleColor()
-												end
-												imgui.SameLine()
-												local r, g, b, a = imgui.ImColor(imgui.GetStyle().Colors[imgui.Col.Button]):GetFloat4()
-												imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(r, g, b, a/2) )
-												imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(r, g, b, a/2))
-												imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(r, g, b, a/2))
-												imgui.PushStyleColor(imgui.Col.Text, imgui.GetStyle().Colors[imgui.Col.TextDisabled])
-													imgui.Button(fa.ICON_FA_COPY .. u8"##" .. i, imgui.ImVec2(30, 23))
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												if imgui.IsItemHovered() then
-													if theme == 1 then
-														imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(1.00, 1.00, 1.00, 1.00))
-													elseif theme == 2 then
-														imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(0.00, 0.00, 0.00, 1.00))
-													end
-													imgui.BeginTooltip()
-													imgui.PushTextWrapPos(230)
-													imgui.TextUnformatted(u8"У игрока отсутствует сим-карта.")
-													imgui.PopTextWrapPos()
-													imgui.EndTooltip()
-													imgui.PopStyleColor()
-												end
+												
 											imgui.PopFont()
 											imgui.PushFont(fontsize20)
 										else
@@ -1701,7 +1717,7 @@ function imgui.OnDrawFrame()
 													local item = 1
 													for _, nick in ipairs(insideTabl["nicks"]) do
 														if nick == nicksandnumbers[i][1] then
-															if imgui.Button(fa.ICON_FA_MINUS_SQUARE .. u8" из игнорирования ##" .. i, imgui.ImVec2(150, 23)) then
+															if imgui.Button(fa.ICON_FA_MINUS_SQUARE .. u8" не игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 																local itemForDelete = 1
 																for _, value in ipairs(insideTabl["nicks"]) do
 																	if value == nicksandnumbers[i][1] then
@@ -1720,7 +1736,7 @@ function imgui.OnDrawFrame()
 															item = item + 1
 															if item > #insideTabl["nicks"] then
 																local pizda = 1
-																if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" в игнорирование ##" .. i, imgui.ImVec2(150, 23)) then
+																if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 																	table.insert(insideTabl["nicks"], u8:decode(nicksandnumbers[i][1]))
 																	encodedTable = encodeJson(insideTabl)
 																	local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
@@ -1732,7 +1748,7 @@ function imgui.OnDrawFrame()
 														end
 													end
 												else
-													if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" в игнорирование ##" .. i, imgui.ImVec2(150, 23)) then
+													if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 														table.insert(insideTabl["nicks"], u8:decode(nicksandnumbers[i][1]))
 														encodedTable = encodeJson(insideTabl)
 														local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
@@ -1749,6 +1765,9 @@ function imgui.OnDrawFrame()
 														if phoneProcess then
 															sampAddChatMessage(tag .. color_text .. "Процесс {FFFFFF}звонка {FFFF00}уже выполняется, подождите немного!", main_color)
 														else
+															nick_x = nicksandnumbers[i][1]
+															number_x = nicksandnumbers[i][2]
+															lvl_x = nicksandnumbers[i][4]
 															waitCalling = true
 															sampSendChat("/call " .. nicksandnumbers[i][2])
 														end
@@ -1837,7 +1856,7 @@ function imgui.OnDrawFrame()
 													local item = 1
 													for _, nick in ipairs(insideTabl["nicks"]) do
 														if nick == nicksandnumbers[i][1] then
-															if imgui.Button(fa.ICON_FA_MINUS_SQUARE .. u8" из игнорирования ##" .. i, imgui.ImVec2(150, 23)) then
+															if imgui.Button(fa.ICON_FA_MINUS_SQUARE .. u8" не игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 																local itemForDelete = 1
 																for _, value in ipairs(insideTabl["nicks"]) do
 																	if value == nicksandnumbers[i][1] then
@@ -1856,7 +1875,7 @@ function imgui.OnDrawFrame()
 															item = item + 1
 															if item > #insideTabl["nicks"] then
 																local pizda = 1
-																if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" в игнорирование ##" .. i, imgui.ImVec2(150, 23)) then
+																if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 																	table.insert(insideTabl["nicks"], u8:decode(nicksandnumbers[i][1]))
 																	encodedTable = encodeJson(insideTabl)
 																	local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
@@ -1868,7 +1887,7 @@ function imgui.OnDrawFrame()
 														end
 													end
 												else
-													if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" в игнорирование ##" .. i, imgui.ImVec2(150, 23)) then
+													if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 														table.insert(insideTabl["nicks"], u8:decode(nicksandnumbers[i][1]))
 														encodedTable = encodeJson(insideTabl)
 														local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
@@ -1877,54 +1896,7 @@ function imgui.OnDrawFrame()
 														file:close()
 													end
 												end
-												imgui.SameLine()
-												local r, g, b, a = imgui.ImColor(imgui.GetStyle().Colors[imgui.Col.Button]):GetFloat4()
-												imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(r, g, b, a/2) )
-												imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(r, g, b, a/2))
-												imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(r, g, b, a/2))
-												imgui.PushStyleColor(imgui.Col.Text, imgui.GetStyle().Colors[imgui.Col.TextDisabled])
-													imgui.Button(fa.ICON_FA_PHONE .. u8" позвонить##" .. i, imgui.ImVec2(100, 23))
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												if imgui.IsItemHovered() then
-													if theme == 1 then
-														imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(1.00, 1.00, 1.00, 1.00))
-													elseif theme == 2 then
-														imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(0.00, 0.00, 0.00, 1.00))
-													end
-													imgui.BeginTooltip()
-													imgui.PushTextWrapPos(230)
-													imgui.TextUnformatted(u8"У игрока отсутствует сим-карта.")
-													imgui.PopTextWrapPos()
-													imgui.EndTooltip()
-													imgui.PopStyleColor()
-												end
-												imgui.SameLine()
-												local r, g, b, a = imgui.ImColor(imgui.GetStyle().Colors[imgui.Col.Button]):GetFloat4()
-												imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(r, g, b, a/2) )
-												imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(r, g, b, a/2))
-												imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(r, g, b, a/2))
-												imgui.PushStyleColor(imgui.Col.Text, imgui.GetStyle().Colors[imgui.Col.TextDisabled])
-													imgui.Button(fa.ICON_FA_COPY .. u8"##" .. i, imgui.ImVec2(30, 23))
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												if imgui.IsItemHovered() then
-													if theme == 1 then
-														imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(1.00, 1.00, 1.00, 1.00))
-													elseif theme == 2 then
-														imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(0.00, 0.00, 0.00, 1.00))
-													end
-													imgui.BeginTooltip()
-													imgui.PushTextWrapPos(230)
-													imgui.TextUnformatted(u8"У игрока отсутствует сим-карта.")
-													imgui.PopTextWrapPos()
-													imgui.EndTooltip()
-													imgui.PopStyleColor()
-												end
+												
 											imgui.PopFont()
 											imgui.PushFont(fontsize20)
 										else
@@ -1940,7 +1912,7 @@ function imgui.OnDrawFrame()
 													local item = 1
 													for _, nick in ipairs(insideTabl["nicks"]) do
 														if nick == nicksandnumbers[i][1] then
-															if imgui.Button(fa.ICON_FA_MINUS_SQUARE .. u8" из игнорирования ##" .. i, imgui.ImVec2(150, 23)) then
+															if imgui.Button(fa.ICON_FA_MINUS_SQUARE .. u8" не игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 																local itemForDelete = 1
 																for _, value in ipairs(insideTabl["nicks"]) do
 																	if value == nicksandnumbers[i][1] then
@@ -1959,7 +1931,7 @@ function imgui.OnDrawFrame()
 															item = item + 1
 															if item > #insideTabl["nicks"] then
 																local pizda = 1
-																if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" в игнорирование ##" .. i, imgui.ImVec2(150, 23)) then
+																if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 																	table.insert(insideTabl["nicks"], u8:decode(nicksandnumbers[i][1]))
 																	encodedTable = encodeJson(insideTabl)
 																	local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
@@ -1971,7 +1943,7 @@ function imgui.OnDrawFrame()
 														end
 													end
 												else
-													if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" в игнорирование ##" .. i, imgui.ImVec2(150, 23)) then
+													if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 														table.insert(insideTabl["nicks"], u8:decode(nicksandnumbers[i][1]))
 														encodedTable = encodeJson(insideTabl)
 														local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
@@ -1988,12 +1960,11 @@ function imgui.OnDrawFrame()
 														if phoneProcess then
 															sampAddChatMessage(tag .. color_text .. "Процесс {FFFFFF}авто-звонка {FFFF00}уже выполняется, подождите немного!", main_color)
 														else
-															if sampTextdrawIsExists(tonumber(numbersid["panel"])) and not sampTextdrawGetString(tonumber(numbersid["biz"])):match("^BIZ$") then
-																sampAddChatMessage(tag .. color_text .. "Вы должны находиться в {FFFFFF}главном меню {FFFF00}телефона!", main_color)
-															else
-																waitCalling = true
-																sampSendChat("/call " .. nicksandnumbers[i][2])
-															end
+															nick_x = nicksandnumbers[i][1]
+															number_x = nicksandnumbers[i][2]
+															lvl_x = nicksandnumbers[i][4]
+															waitCalling = true
+															sampSendChat("/call " .. nicksandnumbers[i][2])
 														end
 													end
 												end
@@ -2019,7 +1990,7 @@ function imgui.OnDrawFrame()
 													local item = 1
 													for _, nick in ipairs(insideTabl["nicks"]) do
 														if nick == nicksandnumbers[i][1] then
-															if imgui.Button(fa.ICON_FA_MINUS_SQUARE .. u8" из игнорирования ##" .. i, imgui.ImVec2(150, 23)) then
+															if imgui.Button(fa.ICON_FA_MINUS_SQUARE .. u8" не игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 																local itemForDelete = 1
 																for _, value in ipairs(insideTabl["nicks"]) do
 																	if value == nicksandnumbers[i][1] then
@@ -2038,7 +2009,7 @@ function imgui.OnDrawFrame()
 															item = item + 1
 															if item > #insideTabl["nicks"] then
 																local pizda = 1
-																if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" в игнорирование ##" .. i, imgui.ImVec2(150, 23)) then
+																if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 																	table.insert(insideTabl["nicks"], u8:decode(nicksandnumbers[i][1]))
 																	encodedTable = encodeJson(insideTabl)
 																	local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
@@ -2050,7 +2021,7 @@ function imgui.OnDrawFrame()
 														end
 													end
 												else
-													if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" в игнорирование ##" .. i, imgui.ImVec2(150, 23)) then
+													if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 														table.insert(insideTabl["nicks"], u8:decode(nicksandnumbers[i][1]))
 														encodedTable = encodeJson(insideTabl)
 														local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
@@ -2059,54 +2030,7 @@ function imgui.OnDrawFrame()
 														file:close()
 													end
 												end
-												imgui.SameLine()
-												local r, g, b, a = imgui.ImColor(imgui.GetStyle().Colors[imgui.Col.Button]):GetFloat4()
-												imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(r, g, b, a/2) )
-												imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(r, g, b, a/2))
-												imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(r, g, b, a/2))
-												imgui.PushStyleColor(imgui.Col.Text, imgui.GetStyle().Colors[imgui.Col.TextDisabled])
-													imgui.Button(fa.ICON_FA_PHONE .. u8" позвонить##" .. i, imgui.ImVec2(100, 23))
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												if imgui.IsItemHovered() then
-													if theme == 1 then
-														imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(1.00, 1.00, 1.00, 1.00))
-													elseif theme == 2 then
-														imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(0.00, 0.00, 0.00, 1.00))
-													end
-													imgui.BeginTooltip()
-													imgui.PushTextWrapPos(230)
-													imgui.TextUnformatted(u8"У игрока отсутствует сим-карта.")
-													imgui.PopTextWrapPos()
-													imgui.EndTooltip()
-													imgui.PopStyleColor()
-												end
-												imgui.SameLine()
-												local r, g, b, a = imgui.ImColor(imgui.GetStyle().Colors[imgui.Col.Button]):GetFloat4()
-												imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(r, g, b, a/2) )
-												imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(r, g, b, a/2))
-												imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(r, g, b, a/2))
-												imgui.PushStyleColor(imgui.Col.Text, imgui.GetStyle().Colors[imgui.Col.TextDisabled])
-													imgui.Button(fa.ICON_FA_COPY .. u8"##" .. i, imgui.ImVec2(30, 23))
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												imgui.PopStyleColor()
-												if imgui.IsItemHovered() then
-													if theme == 1 then
-														imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(1.00, 1.00, 1.00, 1.00))
-													elseif theme == 2 then
-														imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(0.00, 0.00, 0.00, 1.00))
-													end
-													imgui.BeginTooltip()
-													imgui.PushTextWrapPos(230)
-													imgui.TextUnformatted(u8"У игрока отсутствует сим-карта.")
-													imgui.PopTextWrapPos()
-													imgui.EndTooltip()
-													imgui.PopStyleColor()
-												end
+												
 											imgui.PopFont()
 											imgui.PushFont(fontsize20)
 										else
@@ -2122,7 +2046,7 @@ function imgui.OnDrawFrame()
 													local item = 1
 													for _, nick in ipairs(insideTabl["nicks"]) do
 														if nick == nicksandnumbers[i][1] then
-															if imgui.Button(fa.ICON_FA_MINUS_SQUARE .. u8" из игнорирования ##" .. i, imgui.ImVec2(150, 23)) then
+															if imgui.Button(fa.ICON_FA_MINUS_SQUARE .. u8" не игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 																local itemForDelete = 1
 																for _, value in ipairs(insideTabl["nicks"]) do
 																	if value == nicksandnumbers[i][1] then
@@ -2141,7 +2065,7 @@ function imgui.OnDrawFrame()
 															item = item + 1
 															if item > #insideTabl["nicks"] then
 																local pizda = 1
-																if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" в игнорирование ##" .. i, imgui.ImVec2(150, 23)) then
+																if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 																	table.insert(insideTabl["nicks"], u8:decode(nicksandnumbers[i][1]))
 																	encodedTable = encodeJson(insideTabl)
 																	local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
@@ -2153,7 +2077,7 @@ function imgui.OnDrawFrame()
 														end
 													end
 												else
-													if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" в игнорирование ##" .. i, imgui.ImVec2(150, 23)) then
+													if imgui.Button(fa.ICON_FA_PLUS_SQUARE .. u8" игнорировать##" .. i, imgui.ImVec2(140, 23)) then
 														table.insert(insideTabl["nicks"], u8:decode(nicksandnumbers[i][1]))
 														encodedTable = encodeJson(insideTabl)
 														local file = io.open(MoonFolder .."\\config\\FindPlayer.json", "w")
@@ -2170,12 +2094,11 @@ function imgui.OnDrawFrame()
 														if phoneProcess then
 															sampAddChatMessage(tag .. color_text .. "Процесс {FFFFFF}авто-звонка {FFFF00}уже выполняется, подождите немного!", main_color)
 														else
-															if sampTextdrawIsExists(tonumber(numbersid["panel"])) and not sampTextdrawGetString(tonumber(numbersid["biz"])):match("^BIZ$") then
-																sampAddChatMessage(tag .. color_text .. "Вы должны находиться в {FFFFFF}главном меню {FFFF00}телефона!", main_color)
-															else
-																waitCalling = true
-																sampSendChat("/call " .. nicksandnumbers[i][2])
-															end
+															nick_x = nicksandnumbers[i][1]
+															number_x = nicksandnumbers[i][2]
+															lvl_x = nicksandnumbers[i][4]
+															waitCalling = true
+															sampSendChat("/call " .. nicksandnumbers[i][2])
 														end
 													end
 												end
@@ -2201,7 +2124,12 @@ function imgui.OnDrawFrame()
 					end
 				end
 				if process then
-					imgui.TextColoredRGB(gocheck and "{e28b00}Процесс поиска запущен... Получаем информацию о " .. d1 .. nickse .. "{FFFFFF}[" .. idforinfo .. "]" or "{e28b00}Процесс поиска запущен...")
+					local colorxx = nil
+					if theme == 1 then colorxx = "{000000}" else colorxx = "{FFFFFF}" end
+					imgui.TextColoredRGB(gocheck and "{e28b00}Процесс поиска запущен... Получаем информацию о " .. d1 .. nickse .. colorxx .. "[" .. idforinfo .. "]" or "{e28b00}Процесс поиска запущен...")
+					if gocheck then
+						imgui.TextColoredRGB("{e28b00}Если скрипт зациклится на одном игроке, просто начните поиск заново")
+					end
 					imgui.Spacing()
 					imgui.Separator()
 					imgui.Spacing()
@@ -2967,7 +2895,7 @@ function imgui.OnDrawFrame()
 									updateIni = inicfg.load(nil, update_path)
 									if updateIni ~= nil then
 										if tonumber(updateIni.info.vers) > script_vers then
-											sampAddChatMessage(tag .. color_text .. "Есть {FFFFFF}обновление{FFFF00}! Новая версия: {FFFFFF}" .. updateIni.info.vers_text .."{FFFF00}. Текущая версия: {FFFFFF}".. script_vers_text .. "{FFFF00}.", main_color)
+											sampAddChatMessage(tag .. color_text .. "Найдено {FFFFFF}обновление{FFFF00}! Новая версия: {FFFFFF}" .. updateIni.info.vers_text .."{FFFF00}. Текущая версия: {FFFFFF}".. script_vers_text .. "{FFFF00}.", main_color)
 											sampAddChatMessage(tag .. color_text .. "Чтобы {FFFFFF}установить{FFFF00} обновление, необходимо перейти в раздел {FFFFFF}\"обновления\"{FFFF00} в меню скрипта", main_color)
 											mbobnova = true
 											checkupd = false
@@ -2991,11 +2919,25 @@ function imgui.OnDrawFrame()
 					if mbobnova then
 						if imgui.Button(fa.ICON_FA_DOWNLOAD .. u8" обновить", imgui.ImVec2(918, 35)) then
 							if mbobnova then
-								sampAddChatMessage(tag .. color_text .. "Начинаю {FFFFFF}устанавливать {FFFF00}найденное обновление", main_color)
+								sampAddChatMessage(tag .. color_text .. "Начинается {FFFFFF}установка {FFFF00}найденного обновления", main_color)
 								window.v = not window.v
 								imgui.Process = window.v
 								obnova = true
 							end
+						end
+						if imgui.Button(fa.ICON_FA_BOOK .. u8" список изменений", imgui.ImVec2(918, 35)) then
+							downloadUrlToFile(update_url, update_path, function(id, status)
+								if status == dlstatus.STATUS_ENDDOWNLOADDATA then
+									updateIni = inicfg.load(nil, update_path)
+									if updateIni ~= nil then
+										sampShowDialog(1337, "{FFFF00}Список изменений", u8:decode(updateIni.info.changelog):gsub("\\([n])", {n="\n"}), "{ff0000}Закрыть", nil, DIALOG_STYLE_MSGBOX)
+										window.v = false
+										windowActive = true
+									else
+										sampAddChatMessage(tag .. color_text .. "Произошла {FFFFFF}ошибка{FFFF00}, попробуйте ещё раз", main_color)
+									end
+								end
+							end)
 						end
 					else
 						local r, g, b, a = imgui.ImColor(imgui.GetStyle().Colors[imgui.Col.Button]):GetFloat4()
@@ -3010,7 +2952,7 @@ function imgui.OnDrawFrame()
 						imgui.PopStyleColor()
 					end
 					if imgui.Button(fa.ICON_FA_HISTORY .. u8" история обновлений", imgui.ImVec2(918, 35)) then
-						sampShowDialog(1337, "{FFFF00}История обновлений скрипта {FFFFFF}FindPlayers", "{FFFF00}Версия {FFFFFF}1.0 {808080}(дата выхода: {a5a5a5}28.10.21{808080}){FFFF00}:\n{FFFFFF}- Релиз\n{FFFF00}Версия {FFFFFF}1.1 {808080}(дата выхода: {a5a5a5}28.10.21{808080}){FFFF00}:\n{FFFFFF}- Исправлены некоторые ошибки\n{FFFF00}Версия {FFFFFF}1.2 {808080}(дата выхода: {a5a5a5}31.10.21{808080}){FFFF00}:\n{FFFFFF}- Исправлено много ошибок\n{FFFFFF}- Предусмотрен и заранее исправлен возможный баг\n{FFFFFF}- Добавлена поддержка двухзначных и трёхзначных номеров", "{ff0000}Закрыть", nil, DIALOG_STYLE_MSGBOX)
+						sampShowDialog(1337, "{FFFF00}История обновлений скрипта {FFFFFF}FindPlayers", "{FFFF00}Версия {FFFFFF}1.0 {808080}(дата выхода: {a5a5a5}28.10.21{808080}){FFFF00}:\n{FFFFFF}- Релиз\n{FFFF00}Версия {FFFFFF}1.1 {808080}(дата выхода: {a5a5a5}28.10.21{808080}){FFFF00}:\n{FFFFFF}- Исправлены некоторые ошибки\n{FFFF00}Версия {FFFFFF}1.2 {808080}(дата выхода: {a5a5a5}31.10.21{808080}){FFFF00}:\n{FFFFFF}- Исправлено много ошибок\n{FFFFFF}- Предусмотрен и заранее исправлен возможный баг\n{FFFFFF}- Добавлена поддержка двухзначных и трёхзначных номеров\n{FFFF00}Версия {FFFFFF}1.3 {808080}(дата выхода: {a5a5a5}18.11.22{808080}){FFFF00}:\n{FFFFFF}- Исправлена работа биндов\n- Система авто-звонков адаптирована под новый интерфейс телефона\n- Добавлена история звонков\n- Теперь можно искать игроков в уровневом диапазоне\n- Добавлена кнопка копирования номера в раздел поиска игроков\n- Немного изменен дизайн\n- Улучшена оптимизация", "{ff0000}Закрыть", nil, DIALOG_STYLE_MSGBOX)
 						window.v = false
 						windowActive = true
 					end
@@ -3073,7 +3015,7 @@ function imgui.OnDrawFrame()
 						end
 					elseif theme == 2 then
 						if page == 1 then
-							imgui.TextColoredRGB("" .. d1 .. "Скрипт {FFFFFF}FindPlayers " .. d1 .. "был создан для удобного поиска людей с определённым уровнем по всему серверу. Как только скрипт\n" .. d1 .. "находит человека с нужным уровнем, он автоматически получает его {FFFFFF}айди" .. d1 .. ", {FFFFFF}ник-нейм" .. d1 .. ", а также {FFFFFF}номер телефона" .. d1 .. ", а затем\n" .. d1 .. "выводит всю эту информацию в окне. В этом же окне через специальные кнопки можно {FFFFFF}звонить игроку " .. d1 .. "(если у него есть \n" .. d1 .. "сим-карта) и {FFFFFF}редактировать систему игнорирования никнеймов " .. d1 .. "(по другому - чёрный список для никнеймов)\n" .. d1 .. "Для того, чтобы скрипт начал искать людей по серверу с нужным уровнем, достаточно перейти в раздел {FFFFFF}\"поиск людей\"\n" .. d1 .. "и нажать на специальную кнопку. По умолчанию скрипт будет искать лишь людей с {FFFFFF}1-ым" .. d1 .. " уровнем, но изменить это\n" .. d1 .. "можно в разделе {FFFFFF}\"параметры скрипта\"" .. d1 .. ". Также в этом разделе можно: {FFFFFF}настроить отправку сообщения при дозвоне до игрока" .. d1 .. ",\n{FFFFFF}перезагрузить скрипт" .. d1 .. " и {FFFFFF}выгрузить скрипт полностью" .. d1 .. ". Для того, чтобы изменить {FFFFFF}бинд" .. d1 .. ", либо {FFFFFF}команду активации окна " .. d1 .. "скрипта,\n" .. d1 .. "достаточно перейти в раздел {FFFFFF}\"настройки активации скрипта\"" .. d1 .. ", и уже там настроить всё по своему. В разделе {FFFFFF}\"система\nигнорирования никнеймов\"" .. d1 .. " можно: {FFFFFF}посмотреть все никнеймы находящиеся в игнорировании" .. d1 .. ", {FFFFFF}удалить все никнеймы из\nигнорирования" .. d1 .. ", {FFFFFF}добавить никнейм в игнорирование" .. d1 .. " и {FFFFFF}удалить никнейм из игнорирования" .. d1 .. ". Данная функция отвечает за\n" .. d1 .. "игорирование определённых игроков при поиске, даже если их уровень соответствует нужному.")
+							imgui.TextColoredRGB("" .. d1 .. "Скрипт {FFFFFF}FindPlayers " .. d1 .. "был создан для удобного поиска людей с определённым уровнем по всему серверу. Как только скрипт\n" .. d1 .. "находит человека с нужным уровнем, он автоматически получает его {FFFFFF}айди" .. d1 .. ", {FFFFFF}ник-нейм" .. d1 .. ", а также {FFFFFF}номер телефона" .. d1 .. ", а затем\n" .. d1 .. "выводит всю эту информацию в окне. В этом же окне через специальные кнопки можно {FFFFFF}звонить игроку " .. d1 .. "(если у него есть \n" .. d1 .. "сим-карта) и {FFFFFF}редактировать систему игнорирования никнеймов " .. d1 .. "(по другому - чёрный список для никнеймов)\n" .. d1 .. "Для того, чтобы скрипт начал искать людей по серверу с нужным уровнем, достаточно перейти в раздел {FFFFFF}\"поиск людей\"\n" .. d1 .. "и нажать на специальную кнопку. По умолчанию скрипт будет искать лишь людей с {FFFFFF}1-ым" .. d1 .. " уровнем, но изменить это\n" .. d1 .. "можно в разделе {FFFFFF}\"параметры скрипта\"" .. d1 .. ". Также в этом разделе можно: {FFFFFF}настроить отправку сообщения при дозвоне до игрока" .. d1 .. ",\n{FFFFFF}перезагрузить скрипт" .. d1 .. " и {FFFFFF}выгрузить скрипт полностью" .. d1 .. ". Для того, чтобы изменить {FFFFFF}бинд" .. d1 .. ", либо {FFFFFF}команду активации окна " .. d1 .. "скрипта,\n" .. d1 .. "достаточно перейти в раздел {FFFFFF}\"настройки активации скрипта\"" .. d1 .. ", и уже там настроить всё по своему. В разделе {FFFFFF}\"система\nигнорирования никнеймов\"" .. d1 .. " можно: {FFFFFF}посмотреть все никнеймы находящиеся в игнорировании" .. d1 .. ", {FFFFFF}удалить все никнеймы из\nигнорирования" .. d1 .. ", {FFFFFF}добавить никнейм в игнорирование" .. d1 .. " и {FFFFFF}удалить никнейм из игнорирования" .. d1 .. ". Данная функция отвечает за\n" .. d1 .. "игнорирование определённых игроков при поиске, даже если их уровень соответствует нужному.")
 							imgui.SameLine()
 							if imgui.Button(fa.ICON_FA_FORWARD .. u8" следующая страница", imgui.ImVec2(205, 25)) then
 								page = 2
